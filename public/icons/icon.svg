@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f2b26" />
+      <stop offset="100%" stop-color="#061614" />
+    </linearGradient>
+    <linearGradient id="tileGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34d399" />
+      <stop offset="100%" stop-color="#059669" />
+    </linearGradient>
+    <linearGradient id="tileGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10b981" />
+      <stop offset="100%" stop-color="#047857" />
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6ee7b7" />
+      <stop offset="100%" stop-color="#10b981" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="16" flood-color="#10b981" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)" />
+  <rect width="504" height="504" x="4" y="4" rx="108" fill="none" stroke="#10b981" stroke-opacity="0.2" stroke-width="4" />
+  
+  <!-- Geometric 2x2 Tiles Grid -->
+  <g filter="url(#glow)" transform="translate(96, 96)">
+    <!-- Top-Left Tile -->
+    <rect x="16" y="16" width="136" height="136" rx="24" fill="url(#tileGrad)" />
+    <!-- Top-Right Tile -->
+    <rect x="168" y="16" width="136" height="136" rx="24" fill="url(#tileGrad2)" />
+    <!-- Bottom-Left Tile -->
+    <rect x="16" y="168" width="136" height="136" rx="24" fill="url(#tileGrad2)" />
+    <!-- Bottom-Right Tile with Accent / Sparkle -->
+    <rect x="168" y="168" width="136" height="136" rx="24" fill="url(#accentGrad)" />
+    
+    <!-- Inner Tile Highlights -->
+    <rect x="28" y="28" width="112" height="112" rx="16" fill="none" stroke="#ffffff" stroke-opacity="0.25" stroke-width="2" />
+    <rect x="180" y="28" width="112" height="112" rx="16" fill="none" stroke="#ffffff" stroke-opacity="0.25" stroke-width="2" />
+    <rect x="28" y="180" width="112" height="112" rx="16" fill="none" stroke="#ffffff" stroke-opacity="0.25" stroke-width="2" />
+    
+    <!-- Center Measurement Dot / Cross -->
+    <circle cx="160" cy="160" r="14" fill="#ffffff" />
+    <circle cx="160" cy="160" r="8" fill="#047857" />
+    
+    <!-- Calculator / Sparkle Icon in bottom right tile -->
+    <path d="M236 216 L244 236 L264 244 L244 252 L236 272 L228 252 L208 244 L228 236 Z" fill="#ffffff" />
+  </g>
+</svg>

@@ -1,36 +1,278 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# TileCalc Pro
 
-## Getting Started
+A production-ready tile and marble quantity calculator with a live product
+catalog synced from Google Sheets. Built with **Next.js 16** (App Router,
+TypeScript), **Redux Toolkit + RTK Query**, **shadcn/ui** components on
+**Tailwind v4**, and **Vitest** for unit tests.
 
-First, run the development server:
+> The current Next.js version is **16.3.4** with React 19 — the App Router
+> APIs, layout/page props, and `LayoutProps<"/">` / `PageProps<"/...">`
+> helpers are used as documented in the local `node_modules/next/dist/docs/`.
+
+---
+
+## Features
+
+- **Four dedicated calculator pages** — Floor, Wall (multi-wall with opening
+  deductions), Kitchen (countertop + optional backsplash), Bathroom (floor +
+  walls with separate tile picks per surface). Each is its own real route
+  with an inline `ResultSummary` rendered **directly below the form** — no
+  redirect, no modal, no lost context.
+- **Live product catalog** — search by name/SKU/color/material, filter by
+  Type, Category, Brand, Finish, Color, and Price range. Responsive table on
+  desktop, stacked cards on mobile.
+- **Stock management** — current inventory, inline "Update" dialog with
+  action / quantity / reason / notes, full history with filtering, automatic
+  RTK Query cache invalidation.
+- **Multi-page persistence** — each calculator's inputs live in Redux, keyed
+  per section, so navigating Home → Floor → Home → Floor (or Floor → Wall →
+  Floor) keeps your previous values.
+- **Global unit toggle (ft / m / inch)** in the navbar, with a single
+  canonical **millimetre** base unit internally for accuracy.
+- **Wastage slider + synced boxes input** in both directions; uses
+  `Math.ceil` everywhere to avoid rounding drift.
+- **Mint-green theme** with light/dark variants, `next-themes` for system
+  preference, mobile-first layout, bottom tab bar + desktop navbar.
+- **Zod validation** in forms, robust Google Sheets parsing that never
+  crashes on malformed rows, and **20 unit tests** for the math.
+
+---
+
+## Tech stack (latest stable as of build time)
+
+| Layer            | Package                                | Version    |
+| ---------------- | -------------------------------------- | ---------- |
+| Framework        | `next`                                 | 16.3.4     |
+| Runtime          | `react` / `react-dom`                  | 19.2.8     |
+| Styling          | `tailwindcss` (v4) + `@tailwindcss/postcss` | ^4     |
+| UI primitives    | Radix UI + `class-variance-authority`  | latest     |
+| Toasts           | `sonner` + `next-themes`               | latest     |
+| State            | `@reduxjs/toolkit` + `react-redux`     | latest     |
+| Forms            | `react-hook-form` + `zod` + `@hookform/resolvers` | latest |
+| Icons            | `lucide-react`                         | latest     |
+| Data source      | `googleapis` (Sheets v4)               | latest     |
+| Tests            | `vitest` + `@testing-library/react`    | latest     |
+
+---
+
+## Getting started
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# Install dependencies
+npm install
+
+# Copy env example and fill in your Google Sheet credentials
+cp .env.example .env.local
+
+# Start dev server
+npm run dev   # http://localhost:3000
+
+# Production build
+npm run build && npm start
+
+# Run tests
+npm test
+
+# Lint
+npm run lint
+
+# Type-check only
+npm run typecheck
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+> If the Google service account isn't configured, the app **still runs** — it
+> falls back to a built-in mock catalog so you can demo the UI.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Environment variables
 
-## Learn More
+Add these to `.env.local` (see `.env.example` for the template).
 
-To learn more about Next.js, take a look at the following resources:
+| Variable                       | Purpose                                                                  |
+| ------------------------------ | ------------------------------------------------------------------------ |
+| `GOOGLE_SHEET_ID`              | The ID in the URL of your Google Sheet                                   |
+| `GOOGLE_SERVICE_ACCOUNT_EMAIL` | Service account email (Editor access required for Stock + History)       |
+| `GOOGLE_PRIVATE_KEY`           | Service account private key (escape newlines as `\n` inside the string)  |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+> All three are required for the **Stock → Update** flow. Reads work via the
+> public CSV export if you'd rather not give the service account access
+> during early prototyping.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Sharing the sheet with the service account
 
-## Deploy on Vercel
+1. In Google Cloud Console, create (or reuse) a service account.
+2. Generate a JSON key, copy the `client_email` and `private_key` into
+   `.env.local`.
+3. Open the target Google Sheet → **Share** → add the service account email
+   as **Editor** (Viewer is enough if you only ever read).
+4. In each tab, ensure the **first row** matches the column names listed
+   below.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Google Sheet schema
+
+The first row of each tab is treated as the header row.
+
+### `Products`
+
+```
+Product_ID | Product_Name | Type | Brand | Length | Width | Size_Unit | Pieces_Per_Box | Price_Per_Box | Color_Variant | Notes
+```
+
+- `Product_ID` is the unique identifier for the product.
+- `Length` / `Width` are numbers in the unit specified in `Size_Unit` (`ft | m | inch | mm | cm`).
+- `Pieces_Per_Box` is the number of tiles per box.
+- `Price_Per_Box` is the price per box.
+- `Color_Variant` is the color/finish variant description.
+
+### `Stock`
+
+```
+Product_ID | Stock_Boxes | Minimum_Boxes | Stock_Status | Last_Updated
+```
+
+- `Stock_Status` is auto-recalculated to `In Stock | Low Stock | Out of Stock`
+  when `POST /api/sheets/stock` is called.
+
+### `Stock_History`
+
+```
+Date | Product_ID | Action | Quantity_Boxes | Quantity_Pieces | Quantity | Previous_Stock | New_Stock | Reason | Notes
+```
+
+- `Action` is one of `Restock | Sale | Adjustment | Return`.
+  - `Restock`, `Return`, and `Adjustment` **add** to inventory.
+  - `Sale` **subtracts** from inventory.
+- **Partial Box Returns / Loose Pieces**: When returning stock, users can specify both boxes and individual loose tiles/pieces. The equivalent box count is computed as `boxes + (pieces / piecesPerBox)` and logged in `Stock_History`.
+
+### `Brands`
+
+```
+ID | Name
+```
+
+### `Types`
+
+```
+ID | Name
+```
+
+### `Color_Variants`
+
+```
+ID | Name
+```
+
+---
+
+## API surface
+
+All routes live under `/api/sheets/*` and are implemented as Next.js Route
+Handlers (App Router).
+
+| Method | Path                          | Description                                     |
+| ------ | ----------------------------- | ----------------------------------------------- |
+| GET    | `/api/sheets/products`        | Parsed product list                             |
+| POST   | `/api/sheets/products`        | Create new product with initial stock           |
+| PUT    | `/api/sheets/products`        | Update existing product specifications          |
+| DELETE | `/api/sheets/products`        | Delete product and its stock record             |
+| GET    | `/api/sheets/categories`      | Category list                                   |
+| GET    | `/api/sheets/brands`          | Brand list (from Brands sheet)                  |
+| GET    | `/api/sheets/types`           | Type list (from Types sheet)                    |
+| GET    | `/api/sheets/color-variants`  | Color variant list (from Color_Variants sheet)  |
+| GET    | `/api/sheets/stock`           | Current stock per Product ID                    |
+| POST   | `/api/sheets/stock`           | Update stock for one Product ID + append history|
+| GET    | `/api/sheets/stock/history`   | Stock history (optional `?productId=...` filter)|
+
+The `POST /api/sheets/stock` payload is validated with Zod:
+
+```json
+{
+  "sku": "TIL-CER-GRY-002",
+  "action": "Restock",
+  "quantity": 5,
+  "reason": "Customer order #42",
+  "notes": "Optional"
+}
+```
+
+---
+
+## Architecture
+
+Feature-first folder layout under `src/`:
+
+```
+src/
+  app/                       # Next.js App Router routes + API handlers
+    calculator/{floor,wall,kitchen,bathroom}/page.tsx
+    catalog/page.tsx
+    stock/page.tsx
+    api/sheets/...
+  features/
+    calculator/              # Floor/Wall/Kitchen/Bathroom calculators
+      components/, lib/, store/
+    catalog/                 # Browse, search, filter, product picker
+    stock/                   # Update form, history table, badges
+    theme/                   # next-themes wrapper + theme toggle
+  components/
+    ui/                      # shadcn primitives (button, card, slider, ...)
+    layout/                  # AppShell, Navbar, MobileNav, HomeDashboard
+  lib/                       # googleSheets, utils, constants, catalog helpers
+  store/                     # Root store + typed hooks + provider
+  types/                     # global.d.ts, domain.ts
+```
+
+Each feature owns its Redux slice(s), selectors, types, and components.
+Shared UI primitives are in `components/ui` and have **no business logic**.
+
+---
+
+## Math, units, and tests
+
+All conversion happens through `features/calculator/lib/unitConversion.ts`,
+with constants in `lib/constants.ts`. Internal math is always in
+**millimetres** / **square millimetres**, then converted back for display
+using `Math.ceil` only at the very end.
+
+Formulas (`features/calculator/lib/formulas.ts`) are pure, side-effect-free
+functions covered by **20 Vitest tests**:
+
+- Unit conversion round-trips for ft, m, inch, mm, cm
+- Exact-fit, tiny-remainder, zero-area, division-by-zero guards
+- Extra% ↔ boxes back-solve consistency
+- Multi-wall summation + opening deduction
+- `totalBoxes` derived from `totalTiles` (not by adding rounded values)
+
+```bash
+npm test
+```
+
+---
+
+## Scripts
+
+| Script              | Description                                 |
+| ------------------- | ------------------------------------------- |
+| `npm run dev`       | Start the dev server with Turbopack         |
+| `npm run build`     | Production build (Next 16 + Turbopack)      |
+| `npm run start`     | Run the production build                    |
+| `npm run lint`      | ESLint (Next.js preset)                     |
+| `npm run typecheck` | TypeScript only                             |
+| `npm test`          | Run the Vitest suite once                   |
+| `npm run test:watch`| Vitest in watch mode                        |
+
+---
+
+## Notes
+
+- The Next.js 16 docs that ship in `node_modules/next/dist/docs` are the
+  source of truth for App Router conventions; if a code snippet here looks
+  unusual, that's why.
+- The service account must have **Editor** access for the Stock
+  write/update flow. Without it, the API still returns the computed
+  result but the Sheet isn't modified.
+- The theme is mint-green with both light and dark variants. Tune the OKLCH
+  variables in `src/app/globals.css` to re-skin.
