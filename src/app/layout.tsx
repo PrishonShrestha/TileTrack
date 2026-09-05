@@ -4,6 +4,7 @@ import { ThemeProvider } from "@/features/theme/components/ThemeProvider";
 import { StoreProvider } from "@/store/StoreProvider";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { AuthInitializer } from "@/features/auth/components/AuthInitializer";
 import { AppShell } from "@/components/layout/AppShell";
 import { PwaProvider } from "@/components/pwa/PwaProvider";
 import { APP_DESCRIPTION, APP_NAME } from "@/lib/constants";
@@ -64,6 +65,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full bg-background text-foreground">
         <ThemeProvider>
           <StoreProvider>
+            <AuthInitializer />
             <PwaProvider>
               <TooltipProvider delayDuration={200}>
                 <AppShell>{children}</AppShell>

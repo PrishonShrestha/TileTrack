@@ -1,42 +1,49 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Bath,
-  Calculator as CalcIcon,
   ChefHat,
   Download,
-  Grid3X3,
   Home,
   LayoutDashboard,
+  LogOut,
   MoreHorizontal,
-  Package,
   Ruler,
   Square,
   WifiOff,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePwa } from "@/components/pwa/PwaProvider";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-
-const MAIN_NAV = [
-  { href: "/", label: "Home", icon: Home },
-  { href: "/calculator/floor", label: "Floor", icon: Square },
-  { href: "/calculator/wall", label: "Wall", icon: Ruler },
-  { href: "/catalog", label: "Catalog", icon: Grid3X3 },
-];
-
-const MORE_NAV = [
-  { href: "/calculator/kitchen", label: "Kitchen", icon: ChefHat },
-  { href: "/calculator/bathroom", label: "Bathroom", icon: Bath },
-  { href: "/stock", label: "Stock", icon: Package },
-];
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useAppSelector } from "@/store/hooks";
+import { useLogoutMutation } from "@/features/auth/store/authApi";
+import { toast } from "sonner";
 
 export function MobileNav() {
   const pathname = usePathname();
+  const router = useRouter();
   const { isInstalled, isOnline, promptInstall } = usePwa();
+  const isAuthenticated = useAppSelector((s) => s.auth.isAuthenticated);
+  const [logout] = useLogoutMutation();
+
+  const handleLogout = async () => {
+    try {
+      await logout().unwrap();
+      toast.success("Logged out successfully.");
+      router.push("/login");
+      router.refresh();
+    } catch {
+      toast.error("Failed to log out.");
+    }
+  };
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:hidden">
@@ -45,24 +52,53 @@ export function MobileNav() {
           <WifiOff className="h-3 w-3" /> Offline mode — Calculators available
         </div>
       )}
-      <div className="grid grid-cols-5">
-        {MAIN_NAV.map((item) => {
-          const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium transition-colors",
-                isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <Icon className="h-5 w-5" />
-              {item.label}
-            </Link>
-          );
-        })}
+      <div className={cn("grid", isAuthenticated ? "grid-cols-5" : "grid-cols-4")}>
+        <Link
+          href="/"
+          className={cn(
+            "flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium transition-colors",
+            pathname === "/" ? "text-primary" : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <Home className="h-5 w-5" />
+          Home
+        </Link>
+
+        <Link
+          href="/calculator/floor"
+          className={cn(
+            "flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium transition-colors",
+            pathname.startsWith("/calculator/floor") ? "text-primary" : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <Square className="h-5 w-5" />
+          Floor
+        </Link>
+
+        <Link
+          href="/calculator/wall"
+          className={cn(
+            "flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium transition-colors",
+            pathname.startsWith("/calculator/wall") ? "text-primary" : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <Ruler className="h-5 w-5" />
+          Wall
+        </Link>
+
+        {isAuthenticated ? (
+          <Link
+            href="/manage"
+            className={cn(
+              "flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-semibold transition-colors",
+              pathname.startsWith("/manage") ? "text-primary" : "text-primary/70 hover:text-primary"
+            )}
+          >
+            <LayoutDashboard className="h-5 w-5" />
+            Manage
+          </Link>
+        ) : null}
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
@@ -76,26 +112,46 @@ export function MobileNav() {
               <span>More</span>
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" side="top" className="bottom-16 w-44">
-            {MORE_NAV.map((item) => {
-              const isActive = pathname.startsWith(item.href);
-              const Icon = item.icon;
-              return (
+          <DropdownMenuContent align="end" side="top" className="bottom-16 w-48">
+            <DropdownMenuItem
+              asChild
+              className={cn(
+                pathname.startsWith("/calculator/kitchen") ? "bg-primary text-primary-foreground" : "",
+                "flex items-center gap-2 py-2"
+              )}
+            >
+              <Link href="/calculator/kitchen" className="flex items-center gap-2 w-full">
+                <ChefHat className="h-4 w-4" />
+                Kitchen Calc
+              </Link>
+            </DropdownMenuItem>
+
+            <DropdownMenuItem
+              asChild
+              className={cn(
+                pathname.startsWith("/calculator/bathroom") ? "bg-primary text-primary-foreground" : "",
+                "flex items-center gap-2 py-2"
+              )}
+            >
+              <Link href="/calculator/bathroom" className="flex items-center gap-2 w-full">
+                <Bath className="h-4 w-4" />
+                Bathroom Calc
+              </Link>
+            </DropdownMenuItem>
+
+            {isAuthenticated ? (
+              <>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem
-                  key={item.href}
-                  asChild
-                  className={cn(
-                    isActive ? "bg-primary text-primary-foreground" : "",
-                    "flex items-center gap-2 py-2"
-                  )}
+                  onClick={handleLogout}
+                  className="flex items-center gap-2 py-2 text-destructive focus:text-destructive cursor-pointer"
                 >
-                  <Link href={item.href} className="flex items-center gap-2 w-full">
-                    <Icon className="h-4 w-4" />
-                    {item.label}
-                  </Link>
+                  <LogOut className="h-4 w-4" />
+                  Logout
                 </DropdownMenuItem>
-              );
-            })}
+              </>
+            ) : null}
+
             {!isInstalled && (
               <>
                 <DropdownMenuSeparator />

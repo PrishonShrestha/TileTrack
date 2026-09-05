@@ -94,10 +94,14 @@ Add these to `.env.local` (see `.env.example` for the template).
 | `GOOGLE_SHEET_ID`              | The ID in the URL of your Google Sheet                                   |
 | `GOOGLE_SERVICE_ACCOUNT_EMAIL` | Service account email (Editor access required for Stock + History)       |
 | `GOOGLE_PRIVATE_KEY`           | Service account private key (escape newlines as `\n` inside the string)  |
+| `AUTH_USERNAME`                | Admin username for single-user authentication (default: `admin`)         |
+| `AUTH_PASSWORD`                | Admin password for single-user authentication (default: `admin`)         |
+| `AUTH_SECRET`                  | Secret key for signing session JWT cookies (min 32 characters)           |
 
-> All three are required for the **Stock → Update** flow. Reads work via the
-> public CSV export if you'd rather not give the service account access
-> during early prototyping.
+> **Authentication**: All calculator and home pages are public. The `/manage` hub
+> (`/manage`, `/manage/catalog`, `/manage/stock`, `/manage/sales`) is protected by
+> an `HttpOnly` signed session cookie checked in `middleware.ts`. Accessing any
+> `/manage/*` route while logged out automatically redirects to `/login?redirect=...`.
 
 ### Sharing the sheet with the service account
 
@@ -174,6 +178,9 @@ Handlers (App Router).
 
 | Method | Path                          | Description                                     |
 | ------ | ----------------------------- | ----------------------------------------------- |
+| POST   | `/api/auth/login`             | Authenticate admin & issue signed cookie        |
+| POST   | `/api/auth/logout`            | Invalidate session cookie                       |
+| GET    | `/api/auth/session`           | Check session validity & return auth state      |
 | GET    | `/api/sheets/products`        | Parsed product list                             |
 | POST   | `/api/sheets/products`        | Create new product with initial stock           |
 | PUT    | `/api/sheets/products`        | Update existing product specifications          |
@@ -186,18 +193,6 @@ Handlers (App Router).
 | POST   | `/api/sheets/stock`           | Update stock for one Product ID + append history|
 | GET    | `/api/sheets/stock/history`   | Stock history (optional `?productId=...` filter)|
 
-The `POST /api/sheets/stock` payload is validated with Zod:
-
-```json
-{
-  "sku": "TIL-CER-GRY-002",
-  "action": "Restock",
-  "quantity": 5,
-  "reason": "Customer order #42",
-  "notes": "Optional"
-}
-```
-
 ---
 
 ## Architecture
@@ -208,21 +203,29 @@ Feature-first folder layout under `src/`:
 src/
   app/                       # Next.js App Router routes + API handlers
     calculator/{floor,wall,kitchen,bathroom}/page.tsx
-    catalog/page.tsx
-    stock/page.tsx
-    api/sheets/...
+    login/page.tsx           # Admin login gate
+    manage/                  # Protected management hub (gated by middleware)
+      page.tsx               # Dashboard (KPIs, 7d/30d activity charts)
+      catalog/page.tsx       # Live product catalog management (Add/Edit/Delete)
+      stock/page.tsx         # Inventory & Stock history
+      sales/page.tsx         # Sales & Returns transactions report
+    api/auth/...             # Auth login/logout/session endpoints
+    api/sheets/...           # Google Sheets API handlers
   features/
+    auth/                    # Single-admin auth, JWT session, login form
     calculator/              # Floor/Wall/Kitchen/Bathroom calculators
-      components/, lib/, store/
-    catalog/                 # Browse, search, filter, product picker
-    stock/                   # Update form, history table, badges
-    theme/                   # next-themes wrapper + theme toggle
+    catalog/                 # Catalog table, filters, product form dialog
+    stock/                   # Stock update form, history table
+    manage/                  # Dashboard view, sub-navigation tabs
+    sales/                   # Sales report, date range filters, KPI cards
+    theme/                   # Theme provider & toggle
   components/
-    ui/                      # shadcn primitives (button, card, slider, ...)
-    layout/                  # AppShell, Navbar, MobileNav, HomeDashboard
+    layout/                  # Navbar, MobileNav, AppShell, HomeDashboard
+    ui/                      # Radix UI primitives, Recharts components
   lib/                       # googleSheets, utils, constants, catalog helpers
   store/                     # Root store + typed hooks + provider
   types/                     # global.d.ts, domain.ts
+  middleware.ts              # Protects /manage and /manage/*
 ```
 
 Each feature owns its Redux slice(s), selectors, types, and components.

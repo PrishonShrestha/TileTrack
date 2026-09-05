@@ -2,19 +2,27 @@ import { configureStore } from "@reduxjs/toolkit";
 import { setupListeners } from "@reduxjs/toolkit/query";
 import calculatorReducer from "@/features/calculator/store/calculatorSlice";
 import catalogReducer from "@/features/catalog/store/catalogSlice";
+import authReducer from "@/features/auth/store/authSlice";
 import { catalogApi } from "@/features/catalog/store/catalogApi";
 import { stockApi } from "@/features/stock/store/stockApi";
+import { authApi } from "@/features/auth/store/authApi";
 
 export const makeStore = () => {
   const store = configureStore({
     reducer: {
       calculator: calculatorReducer,
       catalog: catalogReducer,
+      auth: authReducer,
       [catalogApi.reducerPath]: catalogApi.reducer,
       [stockApi.reducerPath]: stockApi.reducer,
+      [authApi.reducerPath]: authApi.reducer,
     },
     middleware: (getDefaultMiddleware) =>
-      getDefaultMiddleware().concat(catalogApi.middleware, stockApi.middleware),
+      getDefaultMiddleware().concat(
+        catalogApi.middleware,
+        stockApi.middleware,
+        authApi.middleware
+      ),
   });
   setupListeners(store.dispatch);
   return store;

@@ -43,13 +43,13 @@ const calculators = [
 
 const supportLinks = [
   {
-    href: "/catalog",
+    href: "/manage/catalog",
     title: "Product catalog",
     description: "Browse and search the full tile and marble catalog.",
     icon: Grid3X3,
   },
   {
-    href: "/stock",
+    href: "/manage/stock",
     title: "Stock management",
     description: "Track box counts, set minimums, view history.",
     icon: Package,
@@ -85,7 +85,7 @@ export function HomeDashboard() {
                 </Link>
               </Button>
               <Button asChild variant="outline" size="lg">
-                <Link href="/catalog">Browse catalog</Link>
+                <Link href="/manage/catalog">Browse catalog</Link>
               </Button>
             </div>
           </div>
