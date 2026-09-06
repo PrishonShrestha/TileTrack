@@ -10,6 +10,7 @@ import {
   DollarSign,
   FileText,
   Filter,
+  RefreshCw,
 } from "lucide-react";
 import {
   Table,
@@ -33,17 +34,30 @@ import {
 } from "@/components/ui/select";
 import { useGetStockHistoryQuery } from "@/features/stock/store/stockApi";
 import { useGetProductsQuery } from "@/features/catalog/store/catalogApi";
+import { useGetItemsQuery } from "@/features/items/store/itemsApi";
 import { CURRENCY_SYMBOL } from "@/lib/constants";
 import { formatDate, formatNumber } from "@/lib/utils";
+import { toast } from "sonner";
 
 type DatePreset = "today" | "7d" | "30d" | "this_month" | "all" | "custom";
 type ActionTypeFilter = "sales_and_returns" | "sales_only" | "returns_only";
 
 export function SalesView() {
-  const { data: history = [], isLoading: historyLoading } = useGetStockHistoryQuery();
-  const { data: products = [], isLoading: productsLoading } = useGetProductsQuery();
+  const { data: history = [], isLoading: historyLoading, refetch: refetchHistory, isFetching: historyFetching } = useGetStockHistoryQuery();
+  const { data: products = [], isLoading: productsLoading, refetch: refetchProducts, isFetching: productsFetching } = useGetProductsQuery();
+  const { data: items = [], isLoading: itemsLoading, refetch: refetchItems, isFetching: itemsFetching } = useGetItemsQuery();
 
-  const isLoading = historyLoading || productsLoading;
+  const isLoading = historyLoading || productsLoading || itemsLoading;
+  const isRefreshing = historyFetching || productsFetching || itemsFetching;
+
+  const handleRefresh = async () => {
+    try {
+      await Promise.all([refetchHistory(), refetchProducts(), refetchItems()]);
+      toast.success("Sales report refreshed");
+    } catch {
+      toast.error("Failed to refresh sales report");
+    }
+  };
 
   // Filter States
   const [datePreset, setDatePreset] = useState<DatePreset>("30d");
@@ -61,6 +75,15 @@ export function SalesView() {
     });
     return map;
   }, [products]);
+
+  // Items Map
+  const itemMap = useMemo(() => {
+    const map = new Map<string, (typeof items)[0]>();
+    items.forEach((i) => {
+      if (i.itemId) map.set(i.itemId.toLowerCase(), i);
+    });
+    return map;
+  }, [items]);
 
   // Date Range Bounds
   const { fromDate, toDate } = useMemo(() => {
@@ -110,8 +133,9 @@ export function SalesView() {
         const q = searchQuery.toLowerCase().trim();
         const id = (entry.productId || entry.sku || "").toLowerCase();
         const product = productMap.get(id);
-        const name = (product?.productName || "").toLowerCase();
-        const brand = (product?.brand || "").toLowerCase();
+        const nonTile = itemMap.get(id);
+        const name = (product?.productName || nonTile?.name || "").toLowerCase();
+        const brand = (product?.brand || nonTile?.brand || "").toLowerCase();
         const notes = (entry.notes || entry.reason || "").toLowerCase();
 
         if (
@@ -126,7 +150,7 @@ export function SalesView() {
 
       return true;
     });
-  }, [history, actionFilter, fromDate, toDate, searchQuery, productMap]);
+  }, [history, actionFilter, fromDate, toDate, searchQuery, productMap, itemMap]);
 
   // Summary Metrics for the filtered period
   const summary = useMemo(() => {
@@ -140,7 +164,8 @@ export function SalesView() {
     filteredEntries.forEach((entry) => {
       const id = (entry.productId || entry.sku || "").toLowerCase();
       const product = productMap.get(id);
-      const price = product?.pricePerBox ?? 0;
+      const nonTile = itemMap.get(id);
+      const price = product?.pricePerBox ?? nonTile?.pricePerUnit ?? 0;
       const value = entry.quantity * price;
 
       if (entry.action === "Sale") {
@@ -168,18 +193,28 @@ export function SalesView() {
       returnsCount,
       totalEntries: filteredEntries.length,
     };
-  }, [filteredEntries, productMap]);
+  }, [filteredEntries, productMap, itemMap]);
 
   return (
     <div className="space-y-6 pb-12">
       {/* Header */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Sales &amp; Returns Report</h1>
           <p className="text-xs sm:text-sm text-muted-foreground">
             Track customer sales, loose tile returns, and calculated transaction values.
           </p>
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+          className="gap-2 self-start sm:self-auto"
+        >
+          <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
+          <span>Refresh Data</span>
+        </Button>
       </div>
 
       {/* Summary KPI Cards */}
@@ -365,11 +400,11 @@ export function SalesView() {
           <TableHeader>
             <TableRow>
               <TableHead className="w-[140px]">Date</TableHead>
-              <TableHead>Product ID</TableHead>
+              <TableHead>Item / Product ID</TableHead>
               <TableHead>Product Name</TableHead>
               <TableHead>Action</TableHead>
               <TableHead>Quantity</TableHead>
-              <TableHead>Price / Box</TableHead>
+              <TableHead>Unit Price</TableHead>
               <TableHead>Total Value</TableHead>
               <TableHead>Notes</TableHead>
             </TableRow>
@@ -398,8 +433,17 @@ export function SalesView() {
             ) : (
               filteredEntries.map((entry, idx) => {
                 const id = entry.productId || entry.sku || "";
-                const product = productMap.get(id.toLowerCase());
-                const price = product?.pricePerBox ?? 0;
+                const key = id.toLowerCase();
+                const product = productMap.get(key);
+                const nonTile = itemMap.get(key);
+                const name = product?.productName || nonTile?.name || "—";
+                const subtext = product
+                  ? [product.brand, product.type].filter(Boolean).join(" · ")
+                  : nonTile
+                    ? [nonTile.brand, nonTile.category].filter(Boolean).join(" · ")
+                    : "";
+                const unitLabel = nonTile?.unit || "unit";
+                const price = product?.pricePerBox ?? nonTile?.pricePerUnit ?? 0;
                 const totalValue = Math.round(entry.quantity * price);
 
                 return (
@@ -411,13 +455,9 @@ export function SalesView() {
                       {id}
                     </TableCell>
                     <TableCell>
-                      <div className="font-medium text-xs">
-                        {product?.productName || "—"}
-                      </div>
-                      {product?.brand ? (
-                        <span className="text-[11px] text-muted-foreground">
-                          {product.brand} {product.type ? `· ${product.type}` : ""}
-                        </span>
+                      <div className="font-medium text-xs">{name}</div>
+                      {subtext ? (
+                        <span className="text-[11px] text-muted-foreground">{subtext}</span>
                       ) : null}
                     </TableCell>
                     <TableCell>
@@ -429,15 +469,19 @@ export function SalesView() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-xs font-medium">
-                      {entry.quantityPieces && entry.quantityPieces > 0 ? (
-                        <span>
-                          {entry.quantityBoxes ?? 0}b, {entry.quantityPieces} pcs{" "}
-                          <span className="text-[10px] text-muted-foreground">
-                            ({formatNumber(entry.quantity, { maximumFractionDigits: 2 })} b)
+                      {product ? (
+                        entry.quantityPieces && entry.quantityPieces > 0 ? (
+                          <span>
+                            {entry.quantityBoxes ?? 0}b, {entry.quantityPieces} pcs{" "}
+                            <span className="text-[10px] text-muted-foreground">
+                              ({formatNumber(entry.quantity, { maximumFractionDigits: 2 })} b)
+                            </span>
                           </span>
-                        </span>
+                        ) : (
+                          <span>{formatNumber(entry.quantity, { maximumFractionDigits: 2 })} boxes</span>
+                        )
                       ) : (
-                        <span>{formatNumber(entry.quantity, { maximumFractionDigits: 2 })} boxes</span>
+                        <span>{formatNumber(entry.quantity, { maximumFractionDigits: 2 })} {unitLabel}{entry.quantity === 1 ? "" : "s"}</span>
                       )}
                     </TableCell>
                     <TableCell className="text-xs">
@@ -481,8 +525,12 @@ export function SalesView() {
         ) : (
           filteredEntries.map((entry, idx) => {
             const id = entry.productId || entry.sku || "";
-            const product = productMap.get(id.toLowerCase());
-            const price = product?.pricePerBox ?? 0;
+            const key = id.toLowerCase();
+            const product = productMap.get(key);
+            const nonTile = itemMap.get(key);
+            const name = product?.productName || nonTile?.name || "—";
+            const unitLabel = nonTile?.unit || "unit";
+            const price = product?.pricePerBox ?? nonTile?.pricePerUnit ?? 0;
             const totalValue = Math.round(entry.quantity * price);
 
             return (
@@ -490,9 +538,7 @@ export function SalesView() {
                 <div className="flex items-start justify-between">
                   <div>
                     <span className="font-mono text-xs font-bold">{id}</span>
-                    <h3 className="text-sm font-semibold text-foreground">
-                      {product?.productName || "—"}
-                    </h3>
+                    <h3 className="text-sm font-semibold text-foreground">{name}</h3>
                     <p className="text-[11px] text-muted-foreground">
                       {formatDate(entry.date)}
                     </p>
@@ -509,9 +555,13 @@ export function SalesView() {
                   <div>
                     <span className="text-muted-foreground text-[10px] uppercase">Quantity</span>
                     <p className="font-medium">
-                      {entry.quantityPieces && entry.quantityPieces > 0
-                        ? `${entry.quantityBoxes ?? 0}b, ${entry.quantityPieces} pcs`
-                        : `${formatNumber(entry.quantity, { maximumFractionDigits: 2 })} boxes`}
+                      {product ? (
+                        entry.quantityPieces && entry.quantityPieces > 0
+                          ? `${entry.quantityBoxes ?? 0}b, ${entry.quantityPieces} pcs`
+                          : `${formatNumber(entry.quantity, { maximumFractionDigits: 2 })} boxes`
+                      ) : (
+                        `${formatNumber(entry.quantity, { maximumFractionDigits: 2 })} ${unitLabel}${entry.quantity === 1 ? "" : "s"}`
+                      )}
                     </p>
                   </div>
 

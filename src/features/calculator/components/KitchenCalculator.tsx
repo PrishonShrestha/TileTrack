@@ -74,13 +74,13 @@ export function KitchenCalculator() {
             <UnitToggle />
             <Button
               variant="outline"
-              size="sm"
+              size="icon"
               onClick={() => dispatch(resetKitchen())}
-              className="h-8 gap-1 text-xs"
+              className="h-8 w-8 shrink-0"
+              title="Reset kitchen"
               aria-label="Reset kitchen"
             >
               <RotateCcw className="h-3.5 w-3.5" />
-              Reset
             </Button>
           </div>
         </CardHeader>

@@ -72,13 +72,13 @@ export function WallCalculator() {
             <UnitToggle />
             <Button
               variant="outline"
-              size="sm"
+              size="icon"
               onClick={() => dispatch(resetWall())}
-              className="h-8 gap-1 text-xs"
+              className="h-8 w-8 shrink-0"
+              title="Reset walls"
               aria-label="Reset walls"
             >
               <RotateCcw className="h-3.5 w-3.5" />
-              Reset
             </Button>
           </div>
         </CardHeader>

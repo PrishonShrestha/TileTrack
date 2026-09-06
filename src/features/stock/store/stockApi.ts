@@ -9,7 +9,7 @@ import type {
 export const stockApi = createApi({
   reducerPath: "stockApi",
   baseQuery: fetchBaseQuery({ baseUrl: "/api/sheets" }),
-  tagTypes: ["Stock", "StockHistory"],
+  tagTypes: ["Stock", "StockHistory", "Items"],
   keepUnusedDataFor: 30,
   endpoints: (builder) => ({
     getStock: builder.query<Stock[], void>({
@@ -56,6 +56,7 @@ export const stockApi = createApi({
         { type: "Stock", id: arg.productId || arg.sku },
         { type: "Stock", id: "LIST" },
         { type: "StockHistory", id: "LIST" },
+        { type: "Items", id: "LIST" },
       ],
     }),
   }),

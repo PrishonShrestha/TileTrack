@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { StockUpdateButton } from "@/features/stock/components/StockUpdateButton";
+import { StockStatusIndicator } from "@/features/stock/components/StockStatusIndicator";
 import { LENGTH_UNIT_LABELS } from "@/lib/constants-labels";
 import { formatNumber, formatStockBoxesAndPieces } from "@/lib/utils";
 import { CURRENCY_SYMBOL } from "@/lib/constants";
@@ -84,19 +85,7 @@ export function ProductCard({ product, stock, onEdit, onDelete }: ProductCardPro
             <div className="text-xs text-muted-foreground">Price per box</div>
             <div className="text-base font-semibold">{CURRENCY_SYMBOL} {formatNumber(product.pricePerBox, { maximumFractionDigits: 2 })}</div>
           </div>
-          {stock ? (
-            <Badge
-              variant={
-                stock.stockStatus === "In Stock"
-                  ? "success"
-                  : stock.stockStatus === "Low Stock"
-                    ? "warning"
-                    : "destructive"
-              }
-            >
-              {stock.stockStatus}
-            </Badge>
-          ) : null}
+          {stock ? <StockStatusIndicator status={stock.stockStatus} /> : null}
         </div>
         <div className="flex items-center justify-between border-t pt-3 text-sm">
           <span className="text-xs text-muted-foreground">

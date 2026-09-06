@@ -48,18 +48,32 @@ describe("Stock Management and Return Logic", () => {
     expect(newStockBoxes).toBe(52.4);
   });
 
-  it("detects and blocks sale greater than available stock", () => {
-    const currentStock = 10;
-    const requestedSaleBoxes = 12;
-    const isSaleOverStock = requestedSaleBoxes > currentStock;
+  it("disallows loose pieces when piecesPerBox is 1 (single-piece items/products)", () => {
+    const piecesPerBox = 1;
+    const allowLoosePieces = piecesPerBox > 1;
+    expect(allowLoosePieces).toBe(false);
 
-    expect(isSaleOverStock).toBe(true);
+    // When loose pieces are disallowed, effective pieces is forced to 0
+    const inputBoxes = 5;
+    const inputPieces = 3;
+    const effectivePieces = allowLoosePieces ? inputPieces : 0;
+    const totalQuantity = Number((inputBoxes + effectivePieces / piecesPerBox).toFixed(4));
 
+    expect(effectivePieces).toBe(0);
+    expect(totalQuantity).toBe(5);
+  });
+
+  it("allows loose pieces when piecesPerBox is greater than 1", () => {
     const piecesPerBox = 4;
-    const saleBoxes = 9;
-    const salePieces = 5; // 9 + 5/4 = 10.25 boxes
-    const totalSaleQuantity = Number((saleBoxes + salePieces / piecesPerBox).toFixed(4));
-    expect(totalSaleQuantity).toBe(10.25);
-    expect(totalSaleQuantity > currentStock).toBe(true);
+    const allowLoosePieces = piecesPerBox > 1;
+    expect(allowLoosePieces).toBe(true);
+
+    const inputBoxes = 5;
+    const inputPieces = 2;
+    const effectivePieces = allowLoosePieces ? inputPieces : 0;
+    const totalQuantity = Number((inputBoxes + effectivePieces / piecesPerBox).toFixed(4));
+
+    expect(effectivePieces).toBe(2);
+    expect(totalQuantity).toBe(5.5);
   });
 });

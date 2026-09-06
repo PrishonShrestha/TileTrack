@@ -1,14 +1,30 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
-import { Sparkles, Calculator as CalcIcon, Grid3X3, Package, ArrowRight, ChefHat, Bath, Ruler, Square } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useRouter } from "next/navigation";
+import { AppLogo } from "@/components/layout/AppLogo";
+import {
+  Sparkles,
+  Calculator as CalcIcon,
+  Grid3X3,
+  Package,
+  ArrowRight,
+  ChefHat,
+  Bath,
+  Ruler,
+  Square,
+} from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { UnitToggle } from "@/features/calculator/components/UnitToggle";
-import { useGetProductsQuery } from "@/features/catalog/store/catalogApi";
-import { useGetStockQuery } from "@/features/stock/store/stockApi";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import { useAppSelector } from "@/store/hooks";
 
 const calculators = [
   {
@@ -21,14 +37,16 @@ const calculators = [
   {
     href: "/calculator/wall",
     title: "Wall calculator",
-    description: "Tile multiple walls with opening deductions (doors, windows).",
+    description:
+      "Tile multiple walls with opening deductions (doors, windows).",
     icon: Ruler,
     accent: "from-emerald-500/15 to-emerald-500/5",
   },
   {
     href: "/calculator/kitchen",
     title: "Kitchen calculator",
-    description: "Combine countertop and optional backsplash with per-surface tiles.",
+    description:
+      "Combine countertop and optional backsplash with per-surface tiles.",
     icon: ChefHat,
     accent: "from-amber-500/15 to-amber-500/5",
   },
@@ -57,10 +75,18 @@ const supportLinks = [
 ];
 
 export function HomeDashboard() {
-  const { data: products, isLoading: productsLoading } = useGetProductsQuery();
-  const { data: stock, isLoading: stockLoading } = useGetStockQuery();
-  const productCount = products?.length ?? 0;
-  const lowStock = stock?.filter((s) => s.stockStatus !== "In Stock").length ?? 0;
+  const isAuthenticated = useAppSelector((s) => s.auth.isAuthenticated);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.replace("/manage");
+    }
+  }, [isAuthenticated, router]);
+
+  if (isAuthenticated) {
+    return null;
+  }
 
   return (
     <div className="space-y-10">
@@ -68,15 +94,16 @@ export function HomeDashboard() {
         <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="max-w-2xl space-y-3">
             <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-              <Sparkles className="h-3.5 w-3.5" />
-              TileCalc Pro
+              <AppLogo size={18} className="rounded-md border-0 p-0 shadow-none bg-transparent" />
+              TileTrack
             </div>
             <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
               Plan your next tile project with confidence
             </h1>
             <p className="text-base text-muted-foreground">
-              Live product catalog, wastage buffers, multi-wall &amp; multi-surface calculations, and stock
-              tracking — all in one place. Powered by your Google Sheet.
+              Live product catalog, wastage buffers, multi-wall &amp;
+              multi-surface calculations, and stock tracking — all in one place.
+              Powered by your Google Sheet.
             </p>
             <div className="flex flex-wrap items-center gap-2">
               <Button asChild size="lg">
@@ -98,8 +125,13 @@ export function HomeDashboard() {
       <section className="space-y-4">
         <header className="flex items-end justify-between gap-2">
           <div>
-            <h2 className="text-xl font-semibold tracking-tight">Calculators</h2>
-            <p className="text-sm text-muted-foreground">Pick a calculator to get started — your inputs are saved per section.</p>
+            <h2 className="text-xl font-semibold tracking-tight">
+              Calculators
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Pick a calculator to get started — your inputs are saved per
+              section.
+            </p>
           </div>
         </header>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -107,7 +139,9 @@ export function HomeDashboard() {
             const Icon = calc.icon;
             return (
               <Card key={calc.href} className="group relative overflow-hidden">
-                <div className={`absolute inset-0 -z-10 bg-gradient-to-br ${calc.accent} opacity-70`} />
+                <div
+                  className={`absolute inset-0 -z-10 bg-gradient-to-br ${calc.accent} opacity-70`}
+                />
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
                     <span className="grid h-9 w-9 place-items-center rounded-md bg-primary/10 text-primary">
@@ -129,7 +163,7 @@ export function HomeDashboard() {
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {supportLinks.map((link) => {
           const Icon = link.icon;
           return (
@@ -151,36 +185,6 @@ export function HomeDashboard() {
             </Card>
           );
         })}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Snapshot</CardTitle>
-            <CardDescription>Live numbers from your Google Sheet.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {productsLoading || stockLoading ? (
-              <div className="space-y-2">
-                <Skeleton className="h-6 w-32" />
-                <Skeleton className="h-6 w-24" />
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div>
-                  <div className="text-muted-foreground">Products</div>
-                  <div className="text-2xl font-semibold">{productCount}</div>
-                </div>
-                <div>
-                  <div className="text-muted-foreground">Need attention</div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xl font-semibold">{lowStock}</span>
-                    <Badge variant={lowStock > 0 ? "warning" : "success"}>
-                      {lowStock > 0 ? "Low/out" : "Healthy"}
-                    </Badge>
-                  </div>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
       </section>
     </div>
   );

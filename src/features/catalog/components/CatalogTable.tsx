@@ -19,6 +19,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { LENGTH_UNIT_LABELS } from "@/lib/constants-labels";
 import { formatCurrency, formatNumber, formatStockBoxesAndPieces } from "@/lib/utils";
 import { StockUpdateButton } from "@/features/stock/components/StockUpdateButton";
+import { StockStatusIndicator } from "@/features/stock/components/StockStatusIndicator";
 import { ProductCard } from "./ProductCard";
 import { ProductFormDialog } from "./ProductFormDialog";
 import { ProductDeleteDialog } from "./ProductDeleteDialog";
@@ -152,25 +153,15 @@ export function CatalogTable() {
                     <TableCell>{formatCurrency(product.pricePerBox)}</TableCell>
                     <TableCell>
                       {stockEntry ? (
-                        <Badge
-                          variant={
-                            stockEntry.stockStatus === "In Stock"
-                              ? "success"
-                              : stockEntry.stockStatus === "Low Stock"
-                                ? "warning"
-                                : "destructive"
-                          }
-                        >
-                          {stockEntry.stockStatus}
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                          <StockStatusIndicator status={stockEntry.stockStatus} />
+                          <span className="text-xs text-muted-foreground">
+                            {formatStockBoxesAndPieces(stockEntry.stockBoxes, product.piecesPerBox)}
+                          </span>
+                        </div>
                       ) : (
                         <span className="text-xs text-muted-foreground">No data</span>
                       )}
-                      {stockEntry ? (
-                        <div className="mt-1 text-xs text-muted-foreground">
-                          {formatStockBoxesAndPieces(stockEntry.stockBoxes, product.piecesPerBox)}
-                        </div>
-                      ) : null}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1.5">

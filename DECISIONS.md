@@ -1,7 +1,7 @@
 # DECISIONS
 
 This document records the assumptions and design decisions made while
-building **TileCalc Pro** that aren't fully spelled out in the original
+building **TileTrack** that aren't fully spelled out in the original
 spec. Each section explains the choice, the alternatives considered, and
 the trade-off.
 

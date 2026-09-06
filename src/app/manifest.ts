@@ -3,8 +3,8 @@ import { APP_DESCRIPTION, APP_NAME } from "@/lib/constants";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "TileCalc Pro - Tile & Marble Calculator",
-    short_name: "TileCalc Pro",
+    name: "TileTrack - Tile & Inventory Management",
+    short_name: "TileTrack",
     description: APP_DESCRIPTION,
     start_url: "/",
     display: "standalone",
@@ -38,9 +38,9 @@ export default function manifest(): MetadataRoute.Manifest {
         purpose: "maskable",
       },
       {
-        src: "/icons/icon.svg",
-        sizes: "any",
-        type: "image/svg+xml",
+        src: "/icons/apple-touch-icon.png",
+        sizes: "180x180",
+        type: "image/png",
       },
     ],
     shortcuts: [

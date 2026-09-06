@@ -1,4 +1,4 @@
-export const APP_NAME = "TileCalc Pro";
+export const APP_NAME = "TileTrack";
 export const APP_DESCRIPTION =
   "Tile and marble quantity calculator with a live product catalog synced from Google Sheets.";
 
@@ -19,7 +19,9 @@ export const AREA_UNIT_FACTORS: Record<AreaUnit, number> = {
   m2: 1_000_000,
 };
 
-export const SIZE_UNITS: LengthUnit[] = ["ft", "m", "inch"];
+export const ROOM_UNITS: LengthUnit[] = ["ft", "m", "inch"];
+export const TILE_SIZE_UNITS: LengthUnit[] = ["ft", "m", "inch", "mm", "cm"];
+export const SIZE_UNITS: LengthUnit[] = TILE_SIZE_UNITS;
 export const ALL_UNITS: LengthUnit[] = ["ft", "m", "inch", "mm", "cm"];
 
 export const DEFAULT_WASTAGE_PERCENT = 10;
@@ -50,6 +52,8 @@ export const SHARED_SHEET_IDS = {
   brands: "Brands",
   types: "Types",
   colorVariants: "Color_Variants",
+  items: "Items",
+  itemCategories: "Item_Categories",
 } as const;
 
 export const CURRENCY = "NPR" as const;

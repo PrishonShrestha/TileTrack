@@ -6,6 +6,7 @@ import authReducer from "@/features/auth/store/authSlice";
 import { catalogApi } from "@/features/catalog/store/catalogApi";
 import { stockApi } from "@/features/stock/store/stockApi";
 import { authApi } from "@/features/auth/store/authApi";
+import { itemsApi } from "@/features/items/store/itemsApi";
 
 export const makeStore = () => {
   const store = configureStore({
@@ -16,12 +17,14 @@ export const makeStore = () => {
       [catalogApi.reducerPath]: catalogApi.reducer,
       [stockApi.reducerPath]: stockApi.reducer,
       [authApi.reducerPath]: authApi.reducer,
+      [itemsApi.reducerPath]: itemsApi.reducer,
     },
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware().concat(
         catalogApi.middleware,
         stockApi.middleware,
-        authApi.middleware
+        authApi.middleware,
+        itemsApi.middleware
       ),
   });
   setupListeners(store.dispatch);

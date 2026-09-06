@@ -1,4 +1,4 @@
-# TileCalc Pro
+# TileTrack
 
 A production-ready tile and marble quantity calculator with a live product
 catalog synced from Google Sheets. Built with **Next.js 16** (App Router,

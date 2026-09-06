@@ -1,19 +1,16 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
 import type { Stock } from "@/types/domain";
+import { StockStatusIndicator } from "./StockStatusIndicator";
 
 interface LowStockBadgeProps {
   stock?: Stock;
+  className?: string;
+  size?: "sm" | "md" | "lg";
 }
 
-export function LowStockBadge({ stock }: LowStockBadgeProps) {
+export function LowStockBadge({ stock, className, size }: LowStockBadgeProps) {
   if (!stock) return null;
-  const variant =
-    stock.stockStatus === "In Stock"
-      ? "success"
-      : stock.stockStatus === "Low Stock"
-        ? "warning"
-        : "destructive";
-  return <Badge variant={variant}>{stock.stockStatus}</Badge>;
+  return <StockStatusIndicator status={stock.stockStatus} className={className} size={size} />;
 }
+

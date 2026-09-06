@@ -8,6 +8,8 @@ import type {
   Brand,
   ProductType,
   ColorVariant,
+  Item,
+  ItemCategory,
 } from "@/types/domain";
 import {
   safeNumber,
@@ -57,6 +59,18 @@ const CATEGORIES_HEADERS = ["ID", "Name"] as const;
 const BRANDS_HEADERS = ["ID", "Name"] as const;
 const TYPES_HEADERS = ["ID", "Name"] as const;
 const COLOR_VARIANTS_HEADERS = ["ID", "Name"] as const;
+const ITEMS_HEADERS = [
+  "Item_ID",
+  "Name",
+  "Category",
+  "Brand",
+  "Unit",
+  "Price_Per_Unit",
+  "Stock_Qty",
+  "Min_Stock",
+  "Notes",
+] as const;
+const ITEM_CATEGORIES_HEADERS = ["ID", "Name"] as const;
 
 const VALID_SIZE_UNITS: LengthUnit[] = ["ft", "m", "inch", "mm", "cm"];
 
@@ -205,12 +219,7 @@ function parseStock(row: RawRow): Stock | null {
   if (!productId) return null;
   const stockBoxes = safeNumber(row.Stock_Boxes ?? row.stock_boxes);
   const minimumBoxes = safeNumber(row.Minimum_Boxes ?? row.minimum_boxes);
-  const rawStatus = safeString(row.Stock_Status ?? row.stock_status);
-  const status: Stock["stockStatus"] = (["In Stock", "Low Stock", "Out of Stock"] as const).includes(
-    rawStatus as Stock["stockStatus"]
-  )
-    ? (rawStatus as Stock["stockStatus"])
-    : computeStockStatus(stockBoxes, minimumBoxes);
+  const status = computeStockStatus(stockBoxes, minimumBoxes);
   return {
     productId,
     sku: productId,
@@ -498,7 +507,12 @@ export async function fetchStockHistory(): Promise<StockHistoryEntry[]> {
     const entry = parseStockHistory(row);
     if (entry) history.push(entry);
   }
-  return history;
+  return history.sort((a, b) => {
+    const timeA = new Date(a.date).getTime();
+    const timeB = new Date(b.date).getTime();
+    if (isNaN(timeA) || isNaN(timeB)) return 0;
+    return timeB - timeA;
+  });
 }
 
 export async function fetchCategories(): Promise<Category[]> {
@@ -531,6 +545,132 @@ export async function fetchColorVariants(): Promise<ColorVariant[]> {
     .map(parseColorVariant)
     .filter((c): c is ColorVariant => Boolean(c))
     .map((c) => ({ ...c }));
+}
+
+function parseItem(row: RawRow): Item | null {
+  const itemId =
+    safeString(row.Item_ID) ||
+    safeString(row.item_id) ||
+    safeString(row.ItemID) ||
+    safeString(row.ID) ||
+    safeString(row.id);
+  const name =
+    safeString(row.Name) ||
+    safeString(row.name) ||
+    safeString(row.Item_Name) ||
+    safeString(row.item_name);
+  if (!itemId || !name) return null;
+
+  const rawStockQty = safeNumber(row.Stock_Qty ?? row.stock_qty ?? row.StockQty ?? row.stock ?? row.quantity);
+  const rawMinStock = safeNumber(row.Min_Stock ?? row.min_stock ?? row.MinStock ?? row.minimum, 0);
+  const stockStatus = computeStockStatus(rawStockQty, rawMinStock);
+
+  return {
+    itemId,
+    name,
+    category: safeString(row.Category ?? row.category) || "",
+    brand: safeString(row.Brand ?? row.brand) || "",
+    unit: safeString(row.Unit ?? row.unit) || "Piece",
+    pricePerUnit: safeNumber(row.Price_Per_Unit ?? row.price_per_unit ?? row.PricePerUnit ?? row.price),
+    stockQty: rawStockQty,
+    minStock: rawMinStock,
+    stockStatus,
+    notes: safeString(row.Notes ?? row.notes) || undefined,
+  };
+}
+
+function parseItemCategory(row: RawRow): ItemCategory | null {
+  const name =
+    safeString(row.Name) ||
+    safeString(row.name) ||
+    safeString(row.Category_Name) ||
+    safeString(row.category_name) ||
+    safeString(row.Title) ||
+    safeString(row.title);
+  if (!name) {
+    const fallback = safeString(row.ID) || safeString(row.id);
+    if (!fallback) return null;
+    return { id: fallback, name: fallback };
+  }
+  const id =
+    safeString(row.ID) ||
+    safeString(row.id) ||
+    safeString(row.Category_ID) ||
+    safeString(row.category_id) ||
+    name;
+  return { id, name };
+}
+
+export async function fetchItems(): Promise<Item[]> {
+  const rows = await readSheet(SHARED_SHEET_IDS.items, ITEMS_HEADERS);
+  const items: Item[] = [];
+  for (const row of rows) {
+    const item = parseItem(row);
+    if (item) items.push(item);
+  }
+  return items;
+}
+
+export async function fetchItemCategories(): Promise<ItemCategory[]> {
+  const rows = await readSheet(SHARED_SHEET_IDS.itemCategories, ITEM_CATEGORIES_HEADERS);
+  return rows
+    .map(parseItemCategory)
+    .filter((c): c is ItemCategory => Boolean(c))
+    .map((c) => ({ ...c }));
+}
+
+function mapItemToHeaders(item: Item, headerRow: readonly string[]): unknown[] {
+  return headerRow.map((rawHeader) => {
+    const key = String(rawHeader ?? "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+    const stripped = key.replace(/[^a-z0-9]/g, "");
+
+    if (key === "item_id" || key === "itemid" || key === "id" || stripped === "itemid") {
+      return item.itemId;
+    }
+    if (key === "name" || key === "item_name" || key === "title" || stripped === "itemname") {
+      return item.name;
+    }
+    if (key === "category" || key === "category_name" || stripped === "category") {
+      return item.category;
+    }
+    if (key === "brand" || key === "brand_name" || stripped === "brandname") {
+      return item.brand;
+    }
+    if (key === "unit" || key === "unit_of_measure" || stripped === "unit") {
+      return item.unit;
+    }
+    if (
+      key === "price_per_unit" ||
+      key === "priceperunit" ||
+      key === "price" ||
+      key === "rate" ||
+      stripped === "priceperunit"
+    ) {
+      return item.pricePerUnit;
+    }
+    if (
+      key === "stock_qty" ||
+      key === "stockqty" ||
+      key === "stock" ||
+      key === "quantity" ||
+      stripped === "stockqty"
+    ) {
+      return item.stockQty;
+    }
+    if (
+      key === "min_stock" ||
+      key === "minstock" ||
+      key === "minimum" ||
+      key === "min" ||
+      stripped === "minstock"
+    ) {
+      return item.minStock;
+    }
+    if (key === "notes" || key === "note" || key === "remark" || key === "description") {
+      return item.notes ?? "";
+    }
+    return "";
+  });
 }
 
 export function recalcStockStatus(stock: number, minimum: number): Stock["stockStatus"] {
@@ -1175,9 +1315,245 @@ export async function updateStock(args: UpdateStockArgs): Promise<StockMutationR
     const historyRow = mapStockHistoryToHeaders(historyEntry, historyHeaders);
     await appendSheet(SHARED_SHEET_IDS.stockHistory, [historyRow]);
 
+    // Also sync Items sheet if item exists there
+    try {
+      const itemHeaders = await getSheetHeaderRow(SHARED_SHEET_IDS.items, ITEMS_HEADERS);
+      const allItemRows = await readSheet(SHARED_SHEET_IDS.items, itemHeaders, {});
+      const itemMatchIdx = allItemRows.findIndex(
+        (row) =>
+          row.Item_ID?.toLowerCase() === targetId.toLowerCase() ||
+          row.item_id?.toLowerCase() === targetId.toLowerCase() ||
+          row.ID?.toLowerCase() === targetId.toLowerCase()
+      );
+      if (itemMatchIdx !== -1) {
+        const itemObj = parseItem(allItemRows[itemMatchIdx]);
+        if (itemObj) {
+          const updatedItem: Item = {
+            ...itemObj,
+            stockQty: newStockValue,
+            stockStatus: newStatus,
+          };
+          const itemSheetRow = itemMatchIdx + 2;
+          const itemEndCol = String.fromCharCode(64 + Math.max(itemHeaders.length, 1));
+          const itemRowData = mapItemToHeaders(updatedItem, itemHeaders);
+          await writeSheet(SHARED_SHEET_IDS.items, `A${itemSheetRow}:${itemEndCol}${itemSheetRow}`, [itemRowData]);
+        }
+      }
+    } catch (err) {
+      console.warn("[googleSheets] Non-critical: Failed to update Items sheet stock_qty", err);
+    }
+
     return { stock: updatedStock, history: historyEntry };
   } catch (error) {
     console.error("[googleSheets] Failed to write stock update", error);
     return { stock: updatedStock, history: historyEntry };
+  }
+}
+
+// ─── Items CRUD ──────────────────────────────────────────────────────────────
+
+export async function createItem(
+  payload: import("@/types/domain").CreateItemPayload
+): Promise<Item> {
+  const existing = await fetchItems();
+  const duplicate = existing.find(
+    (i) => i.itemId.toLowerCase() === payload.itemId.trim().toLowerCase()
+  );
+  if (duplicate) {
+    throw new Error(
+      `Item ID "${payload.itemId}" already exists. Please choose a different ID.`
+    );
+  }
+
+  const initialStock = Math.max(0, payload.initialStockQty ?? 0);
+  const minStock = Math.max(0, payload.minStock ?? 2);
+  const stockStatus = computeStockStatus(initialStock, minStock);
+
+  const item: Item = {
+    itemId: payload.itemId.trim(),
+    name: payload.name.trim(),
+    category: payload.category.trim(),
+    brand: payload.brand.trim(),
+    unit: payload.unit.trim(),
+    pricePerUnit: payload.pricePerUnit,
+    stockQty: initialStock,
+    minStock,
+    stockStatus,
+    notes: payload.notes?.trim() || undefined,
+  };
+
+  if (!hasServiceAccount()) {
+    return item;
+  }
+
+  try {
+    const itemHeaders = await getSheetHeaderRow(SHARED_SHEET_IDS.items, ITEMS_HEADERS);
+    const itemRow = mapItemToHeaders(item, itemHeaders);
+    await appendSheet(SHARED_SHEET_IDS.items, [itemRow]);
+
+    // Also add a Stock row (reusing Stock sheet with Item_ID as Product_ID)
+    const stockRecord: Stock = {
+      productId: item.itemId,
+      sku: item.itemId,
+      stockBoxes: initialStock,
+      minimumBoxes: minStock,
+      stockStatus,
+      lastUpdated: new Date().toISOString(),
+    };
+    const stockHeaders = await getSheetHeaderRow(SHARED_SHEET_IDS.stock, STOCK_HEADERS);
+    const stockRow = mapStockToHeaders(stockRecord, stockHeaders);
+    await appendSheet(SHARED_SHEET_IDS.stock, [stockRow]);
+
+    if (initialStock > 0) {
+      const historyEntry: StockHistoryEntry = {
+        date: new Date().toISOString(),
+        productId: item.itemId,
+        sku: item.itemId,
+        action: "Restock",
+        quantityBoxes: initialStock,
+        quantityPieces: 0,
+        quantity: initialStock,
+        previousStock: 0,
+        newStock: initialStock,
+        notes: "Initial stock upon item creation",
+      };
+      const historyHeaders = await getSheetHeaderRow(
+        SHARED_SHEET_IDS.stockHistory,
+        STOCK_HISTORY_HEADERS
+      );
+      const historyRow = mapStockHistoryToHeaders(historyEntry, historyHeaders);
+      await appendSheet(SHARED_SHEET_IDS.stockHistory, [historyRow]);
+    }
+
+    return item;
+  } catch (error) {
+    console.error("[googleSheets] Failed to create item", error);
+    throw error;
+  }
+}
+
+export async function updateItem(
+  payload: import("@/types/domain").UpdateItemPayload
+): Promise<Item> {
+  const existing = await fetchItems();
+  const match = existing.find(
+    (i) => i.itemId.toLowerCase() === payload.itemId.trim().toLowerCase()
+  );
+  if (!match) {
+    throw new Error(`Item "${payload.itemId}" not found.`);
+  }
+
+  const updated: Item = {
+    ...match,
+    name: payload.name.trim(),
+    category: payload.category.trim(),
+    brand: payload.brand.trim(),
+    unit: payload.unit.trim(),
+    pricePerUnit: payload.pricePerUnit,
+    minStock: payload.minStock ?? match.minStock,
+    stockStatus: computeStockStatus(match.stockQty, payload.minStock ?? match.minStock),
+    notes: payload.notes?.trim() || undefined,
+  };
+
+  if (!hasServiceAccount()) {
+    return updated;
+  }
+
+  try {
+    const headers = await getSheetHeaderRow(SHARED_SHEET_IDS.items, ITEMS_HEADERS);
+    const allRows = await readSheet(SHARED_SHEET_IDS.items, headers, {});
+    const matchIndex = allRows.findIndex(
+      (row) =>
+        row.Item_ID?.toLowerCase() === payload.itemId.trim().toLowerCase() ||
+        row.item_id?.toLowerCase() === payload.itemId.trim().toLowerCase() ||
+        row.ID?.toLowerCase() === payload.itemId.trim().toLowerCase()
+    );
+    if (matchIndex === -1) {
+      throw new Error(`Item "${payload.itemId}" not found in sheet.`);
+    }
+
+    const sheetRow = matchIndex + 2;
+    const endCol = String.fromCharCode(64 + Math.max(headers.length, 1));
+    const itemRow = mapItemToHeaders(updated, headers);
+    await writeSheet(SHARED_SHEET_IDS.items, `A${sheetRow}:${endCol}${sheetRow}`, [itemRow]);
+
+    return updated;
+  } catch (error) {
+    console.error("[googleSheets] Failed to update item", error);
+    throw error;
+  }
+}
+
+export async function deleteItem(
+  itemId: string
+): Promise<{ success: boolean; itemId: string }> {
+  const targetId = itemId.trim();
+  if (!targetId) {
+    throw new Error("Item ID is required for deletion.");
+  }
+
+  if (!hasServiceAccount()) {
+    return { success: true, itemId: targetId };
+  }
+
+  try {
+    // 1. Remove from Items sheet
+    const itemHeaders = await getSheetHeaderRow(SHARED_SHEET_IDS.items, ITEMS_HEADERS);
+    const allItemRows = await readSheet(SHARED_SHEET_IDS.items, itemHeaders, {});
+    const remainingItemRows = allItemRows.filter(
+      (row) =>
+        row.Item_ID?.toLowerCase() !== targetId.toLowerCase() &&
+        row.item_id?.toLowerCase() !== targetId.toLowerCase() &&
+        row.ID?.toLowerCase() !== targetId.toLowerCase()
+    );
+
+    const itemEndCol = String.fromCharCode(64 + Math.max(itemHeaders.length, 1));
+    await clearSheet(
+      SHARED_SHEET_IDS.items,
+      `A2:${itemEndCol}${Math.max(allItemRows.length + 5, 2)}`
+    );
+    if (remainingItemRows.length > 0) {
+      const values = remainingItemRows.map((r) => {
+        const parsed = parseItem(r);
+        return parsed ? mapItemToHeaders(parsed, itemHeaders) : itemHeaders.map((h) => r[h] || "");
+      });
+      await writeSheet(
+        SHARED_SHEET_IDS.items,
+        `A2:${itemEndCol}${values.length + 1}`,
+        values
+      );
+    }
+
+    // 2. Remove from Stock sheet
+    const stockHeaders = await getSheetHeaderRow(SHARED_SHEET_IDS.stock, STOCK_HEADERS);
+    const allStockRows = await readSheet(SHARED_SHEET_IDS.stock, stockHeaders, {});
+    const remainingStockRows = allStockRows.filter(
+      (row) =>
+        row.Product_ID?.toLowerCase() !== targetId.toLowerCase() &&
+        row.product_id?.toLowerCase() !== targetId.toLowerCase() &&
+        row.SKU?.toLowerCase() !== targetId.toLowerCase()
+    );
+
+    const stockEndCol = String.fromCharCode(64 + Math.max(stockHeaders.length, 1));
+    await clearSheet(
+      SHARED_SHEET_IDS.stock,
+      `A2:${stockEndCol}${Math.max(allStockRows.length + 5, 2)}`
+    );
+    if (remainingStockRows.length > 0) {
+      const stockValues = remainingStockRows.map((r) => {
+        const s = parseStock(r);
+        return s ? mapStockToHeaders(s, stockHeaders) : stockHeaders.map((h) => r[h] || "");
+      });
+      await writeSheet(
+        SHARED_SHEET_IDS.stock,
+        `A2:${stockEndCol}${stockValues.length + 1}`,
+        stockValues
+      );
+    }
+
+    return { success: true, itemId: targetId };
+  } catch (error) {
+    console.error("[googleSheets] Failed to delete item", error);
+    throw error;
   }
 }

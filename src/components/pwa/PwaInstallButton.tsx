@@ -38,8 +38,8 @@ export function PwaInstallButton({
       size={size}
       onClick={handleInstallClick}
       className={className}
-      title="Install TileCalc Pro as an App"
-      aria-label="Install TileCalc Pro as an App"
+      title="Install TileTrack as an App"
+      aria-label="Install TileTrack as an App"
     >
       <Download className="h-3.5 w-3.5 mr-1 text-primary" />
       <span>Install App</span>

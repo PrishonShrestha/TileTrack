@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   resetFloor,
@@ -16,6 +17,7 @@ import { NumericInput } from "@/components/ui/numeric-input";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { LENGTH_UNIT_LABELS } from "@/lib/constants-labels";
+import { areaUnitFor, areaUnitLabel } from "@/features/calculator/lib/unitConversion";
 import { UnitToggle } from "./UnitToggle";
 import { TileSourceToggle } from "./TileSourceToggle";
 import { ExtraTilesSlider } from "./ExtraTilesSlider";
@@ -32,6 +34,10 @@ export function FloorCalculator() {
   const unit = useAppSelector((s) => s.calculator.unit);
   const floor = useAppSelector((s) => s.calculator.floor);
   const result = useAppSelector(selectFloorResult);
+
+  const [inputMode, setInputMode] = useState<"dimensions" | "area">("dimensions");
+  const areaUnit = areaUnitFor(unit);
+  const areaLabel = areaUnitLabel(areaUnit);
 
   const handleSourceChange = (value: TileSourceMode) => {
     dispatch(setFloorTileSource(value));
@@ -55,7 +61,7 @@ export function FloorCalculator() {
     );
   };
 
-  const selectedProductName = floor.selectedSku ?? undefined;
+  const currentArea = Number((floor.length * floor.width).toFixed(2));
 
   return (
     <div className="space-y-6">
@@ -68,50 +74,89 @@ export function FloorCalculator() {
               <CardTitle className="text-lg font-semibold">Room dimensions</CardTitle>
             </div>
             <p className="text-sm text-muted-foreground mt-1">
-              Enter the length and width of the floor you want to tile.
+              Enter length and width or specify total floor area directly.
             </p>
           </div>
           <div className="flex items-center gap-2">
             <UnitToggle />
             <Button
               variant="outline"
-              size="sm"
+              size="icon"
               onClick={() => dispatch(resetFloor())}
-              className="h-8 gap-1 text-xs"
+              className="h-8 w-8 shrink-0"
+              title="Reset floor inputs"
               aria-label="Reset floor inputs"
             >
               <RotateCcw className="h-3.5 w-3.5" />
-              Reset
             </Button>
           </div>
         </CardHeader>
         <CardContent className="space-y-4 pt-0">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Room length</Label>
-              <NumericInput
-                value={floor.length}
-                onValueChange={(val) => dispatch(setFloorField({ length: val ?? 0 }))}
-                suffix={LENGTH_UNIT_LABELS[unit]}
-                min={0}
-                allowDecimal={true}
-                placeholder="e.g. 15.5"
-                aria-label="Room length"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Room width</Label>
-              <NumericInput
-                value={floor.width}
-                onValueChange={(val) => dispatch(setFloorField({ width: val ?? 0 }))}
-                suffix={LENGTH_UNIT_LABELS[unit]}
-                min={0}
-                allowDecimal={true}
-                placeholder="e.g. 12.25"
-                aria-label="Room width"
-              />
-            </div>
+          <div className="flex items-center justify-between pb-1 border-b border-border/60">
+            <span className="text-xs font-medium text-muted-foreground">Input method:</span>
+            <ToggleGroup
+              type="single"
+              value={inputMode}
+              onValueChange={(val) => {
+                if (val === "dimensions" || val === "area") setInputMode(val);
+              }}
+              className="bg-muted/40 p-0.5 rounded-lg"
+            >
+              <ToggleGroupItem value="dimensions" className="text-xs px-2.5 py-1 h-7">
+                Length × Width
+              </ToggleGroupItem>
+              <ToggleGroupItem value="area" className="text-xs px-2.5 py-1 h-7">
+                Direct Area ({areaLabel})
+              </ToggleGroupItem>
+            </ToggleGroup>
           </div>
+
+          {inputMode === "dimensions" ? (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Room length</Label>
+                <NumericInput
+                  value={floor.length}
+                  onValueChange={(val) => dispatch(setFloorField({ length: val ?? 0 }))}
+                  suffix={LENGTH_UNIT_LABELS[unit]}
+                  min={0}
+                  allowDecimal={true}
+                  placeholder="e.g. 15.5"
+                  aria-label="Room length"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Room width</Label>
+                <NumericInput
+                  value={floor.width}
+                  onValueChange={(val) => dispatch(setFloorField({ width: val ?? 0 }))}
+                  suffix={LENGTH_UNIT_LABELS[unit]}
+                  min={0}
+                  allowDecimal={true}
+                  placeholder="e.g. 12.25"
+                  aria-label="Room width"
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2 max-w-md">
+              <Label className="text-sm font-medium">Total floor area</Label>
+              <NumericInput
+                value={currentArea > 0 ? currentArea : undefined}
+                onValueChange={(val) =>
+                  dispatch(setFloorField({ length: val ?? 0, width: 1 }))
+                }
+                suffix={areaLabel}
+                min={0}
+                allowDecimal={true}
+                placeholder="e.g. 144"
+                aria-label="Total floor area"
+              />
+              <p className="text-xs text-muted-foreground">
+                Enter the direct square area of your floor.
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -271,7 +316,7 @@ export function FloorCalculator() {
         result={result}
         unit={unit}
         sku={floor.selectedSku}
-        productName={selectedProductName}
+        productId={floor.selectedSku}
         title="Floor calculation result"
       />
     </div>

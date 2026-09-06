@@ -2,7 +2,8 @@
 
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Wifi, WifiOff, Download, Sparkles, X } from "lucide-react";
+import { Wifi, WifiOff, Download, X } from "lucide-react";
+import { AppLogo } from "@/components/layout/AppLogo";
 import { Button } from "@/components/ui/button";
 
 interface BeforeInstallPromptEvent extends Event {
@@ -72,7 +73,7 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
-      const dismissed = localStorage.getItem("tilecalc_pwa_dismissed");
+      const dismissed = localStorage.getItem("tiletrack_pwa_dismissed");
       if (!dismissed) {
         setShowBanner(true);
       }
@@ -84,7 +85,7 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
       setIsInstalled(true);
       setDeferredPrompt(null);
       setShowBanner(false);
-      toast.success("TileCalc Pro has been installed as an app!");
+      toast.success("TileTrack has been installed as an app!");
     });
 
     // Register Service Worker in production / supported environments
@@ -97,10 +98,13 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
             if (newWorker) {
               newWorker.addEventListener("statechange", () => {
                 if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
-                  toast.info("A new version is available! Reload to update.", {
+                  toast.info("A new version of TileTrack is available!", {
                     action: {
                       label: "Reload",
-                      onClick: () => window.location.reload(),
+                      onClick: () => {
+                        newWorker.postMessage({ type: "SKIP_WAITING" });
+                        window.location.reload();
+                      },
                     },
                   });
                 }
@@ -139,7 +143,7 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
 
   const dismissBanner = () => {
     setShowBanner(false);
-    localStorage.setItem("tilecalc_pwa_dismissed", Date.now().toString());
+    localStorage.setItem("tiletrack_pwa_dismissed", Date.now().toString());
   };
 
   return (
@@ -159,11 +163,9 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
         <div className="fixed bottom-20 left-4 right-4 z-50 mx-auto max-w-md animate-in fade-in slide-in-from-bottom-5 duration-300 md:bottom-6 md:right-6 md:left-auto">
           <div className="flex items-center justify-between gap-3 rounded-2xl border border-primary/30 bg-card/95 p-4 shadow-xl backdrop-blur-md">
             <div className="flex items-center gap-3">
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground shadow-sm">
-                <Sparkles className="h-5 w-5" />
-              </span>
+              <AppLogo size={40} className="rounded-xl shadow-xs shrink-0" />
               <div>
-                <p className="text-sm font-semibold text-foreground">Install TileCalc Pro</p>
+                <p className="text-sm font-semibold text-foreground">Install TileTrack</p>
                 <p className="text-xs text-muted-foreground">Fast, offline-ready tile calculator on your home screen.</p>
               </div>
             </div>

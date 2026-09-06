@@ -19,6 +19,12 @@ const NAV_ITEMS = [
     exact: false,
   },
   {
+    label: "Items",
+    href: "/manage/items",
+    icon: Package,
+    exact: false,
+  },
+  {
     label: "Stock",
     href: "/manage/stock",
     icon: Package,

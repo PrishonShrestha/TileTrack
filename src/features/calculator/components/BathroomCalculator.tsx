@@ -69,13 +69,13 @@ export function BathroomCalculator() {
             <UnitToggle />
             <Button
               variant="outline"
-              size="sm"
+              size="icon"
               onClick={() => dispatch(resetBathroom())}
-              className="h-8 gap-1 text-xs"
+              className="h-8 w-8 shrink-0"
+              title="Reset bathroom"
               aria-label="Reset bathroom"
             >
               <RotateCcw className="h-3.5 w-3.5" />
-              Reset
             </Button>
           </div>
         </CardHeader>

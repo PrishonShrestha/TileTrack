@@ -428,4 +428,122 @@ describe("tile unit conversion (inches, feet, meters, cm, mm)", () => {
     expect(resultInMeters.totalBoxes).toBe(resultInFeet.totalBoxes);
     expect(resultInMeters.estimatedCost).toBe(resultInFeet.estimatedCost);
   });
+
+  describe("direct area input calculations", () => {
+    it("matches length x width calculation with direct area for floor", () => {
+      // 12 ft x 12 ft = 144 ft²
+      const dimResult = calculateRoom({
+        length: 12,
+        width: 12,
+        tile: { length: 2, width: 2, piecesPerBox: 4, pricePerBox: 1000, tileUnit: "ft" },
+        extraPercent: 10,
+        pricePerBox: 1000,
+        unit: "ft",
+      });
+
+      // Direct area = 144 ft² entered as length=144, width=1
+      const areaResult = calculateRoom({
+        length: 144,
+        width: 1,
+        tile: { length: 2, width: 2, piecesPerBox: 4, pricePerBox: 1000, tileUnit: "ft" },
+        extraPercent: 10,
+        pricePerBox: 1000,
+        unit: "ft",
+      });
+
+      expect(dimResult.surfaceAreaMm2).toBeCloseTo(areaResult.surfaceAreaMm2, 2);
+      expect(dimResult.baseTilesNeeded).toBe(areaResult.baseTilesNeeded);
+      expect(dimResult.baseBoxesNeeded).toBe(areaResult.baseBoxesNeeded);
+      expect(dimResult.extraTiles).toBe(areaResult.extraTiles);
+      expect(dimResult.totalTiles).toBe(areaResult.totalTiles);
+      expect(dimResult.totalBoxes).toBe(areaResult.totalBoxes);
+      expect(dimResult.estimatedCost).toBe(areaResult.estimatedCost);
+    });
+
+    it("matches length x height calculation with direct area for walls with deductions", () => {
+      // Wall 10 ft x 10 ft = 100 ft² with a 10 ft² opening (net 90 ft²)
+      const dimWall: WallInput = {
+        id: "w1",
+        label: "Wall Dimensions",
+        length: 10,
+        height: 10,
+        openings: [{ id: "o1", label: "Door", width: 2, height: 5 }],
+      };
+
+      // Wall entered as direct area 100 ft² (length=100, height=1) with 10 ft² opening
+      const areaWall: WallInput = {
+        id: "w2",
+        label: "Wall Direct Area",
+        length: 100,
+        height: 1,
+        openings: [{ id: "o2", label: "Door", width: 2, height: 5 }],
+      };
+
+      const tileSpec: TileSpec = {
+        length: 1,
+        width: 1,
+        piecesPerBox: 10,
+        pricePerBox: 500,
+        tileUnit: "ft",
+      };
+
+      const dimCalc = calculateWall(dimWall, tileSpec, 10, 500, "ft");
+      const areaCalc = calculateWall(areaWall, tileSpec, 10, 500, "ft");
+
+      expect(dimCalc.area).toBeCloseTo(areaCalc.area, 2);
+      expect(dimCalc.result.baseTilesNeeded).toBe(areaCalc.result.baseTilesNeeded);
+      expect(dimCalc.result.totalBoxes).toBe(areaCalc.result.totalBoxes);
+      expect(dimCalc.result.estimatedCost).toBe(areaCalc.result.estimatedCost);
+    });
+  });
+
+  describe("millimeter tile size calculations", () => {
+    it("accurately calculates room in feet with 600mm x 600mm tiles", () => {
+      // 10 ft x 10 ft room = 100 ft² = 9,290,304 mm²
+      // Tile 600 mm x 600 mm = 360,000 mm²
+      // Base tiles: ceil(9,290,304 / 360,000) = ceil(25.8064) = 26 tiles
+      // 4 pieces per box -> 7 boxes base
+      // 10% wastage: ceil(26 * 0.10) = 3 extra tiles -> total 29 tiles -> 8 boxes
+      const result = calculateRoom({
+        length: 10,
+        width: 10,
+        tile: { length: 600, width: 600, piecesPerBox: 4, pricePerBox: 1500, tileUnit: "mm" },
+        extraPercent: 10,
+        pricePerBox: 1500,
+        unit: "ft",
+      });
+
+      expect(result.surfaceAreaMm2).toBeCloseTo(9_290_304, 0);
+      expect(result.baseTilesNeeded).toBe(26);
+      expect(result.baseBoxesNeeded).toBe(7);
+      expect(result.extraTiles).toBe(3);
+      expect(result.totalTiles).toBe(29);
+      expect(result.totalBoxes).toBe(8);
+      expect(result.estimatedCost).toBe(12000); // 8 * 1500
+    });
+
+    it("accurately calculates room in meters with 300mm x 600mm tiles", () => {
+      // 3m x 4m room = 12 m² = 12,000,000 mm²
+      // Tile 300 mm x 600 mm = 180,000 mm²
+      // Base tiles: ceil(12,000,000 / 180,000) = ceil(66.6667) = 67 tiles
+      // 8 pieces per box -> 9 boxes base
+      // 5% wastage: ceil(67 * 0.05) = 4 extra tiles -> total 71 tiles -> 9 boxes
+      const result = calculateRoom({
+        length: 3,
+        width: 4,
+        tile: { length: 300, width: 600, piecesPerBox: 8, pricePerBox: 1200, tileUnit: "mm" },
+        extraPercent: 5,
+        pricePerBox: 1200,
+        unit: "m",
+      });
+
+      expect(result.surfaceAreaMm2).toBeCloseTo(12_000_000, 0);
+      expect(result.baseTilesNeeded).toBe(67);
+      expect(result.baseBoxesNeeded).toBe(9);
+      expect(result.extraTiles).toBe(4);
+      expect(result.totalTiles).toBe(71);
+      expect(result.totalBoxes).toBe(9);
+      expect(result.estimatedCost).toBe(10800); // 9 * 1200
+    });
+  });
 });

@@ -5,7 +5,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ShieldCheck, Lock, User, AlertCircle, ArrowRight, Loader2 } from "lucide-react";
+import { AppLogo } from "@/components/layout/AppLogo";
+import { Lock, User, AlertCircle, ArrowRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -53,14 +54,16 @@ export function LoginForm() {
 
   return (
     <Card className="w-full max-w-md border-border/70 shadow-lg">
-      <CardHeader className="space-y-2 text-center pb-4">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-          <ShieldCheck className="h-6 w-6" />
+      <CardHeader className="space-y-3 text-center pb-4">
+        <div className="flex justify-center">
+          <AppLogo size={52} priority className="shadow-sm rounded-2xl" />
         </div>
-        <CardTitle className="text-xl font-bold tracking-tight">Admin Login</CardTitle>
-        <CardDescription className="text-xs text-muted-foreground">
-          Enter your admin credentials to access inventory, sales, and catalog management.
-        </CardDescription>
+        <div>
+          <CardTitle className="text-xl font-bold tracking-tight">Admin Login</CardTitle>
+          <CardDescription className="text-xs text-muted-foreground mt-1">
+            Enter your admin credentials to access inventory, sales, and catalog management.
+          </CardDescription>
+        </div>
       </CardHeader>
 
       <CardContent>

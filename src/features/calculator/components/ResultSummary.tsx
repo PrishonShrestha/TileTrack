@@ -20,9 +20,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn, formatNumber, formatStockBoxesAndPieces } from "@/lib/utils";
 import { areaUnitFor, areaUnitLabel, mm2ToArea } from "@/features/calculator/lib/unitConversion";
-import type { CalculatorResult } from "@/types/domain";
 import { useGetStockQuery } from "@/features/stock/store/stockApi";
 import { useGetProductsQuery } from "@/features/catalog/store/catalogApi";
+import { StockStatusIndicator } from "@/features/stock/components/StockStatusIndicator";
+import type { CalculatorResult } from "@/types/domain";
 import type { LengthUnit } from "@/lib/constants";
 import { CURRENCY_SYMBOL } from "@/lib/constants";
 import { toast } from "sonner";
@@ -269,18 +270,7 @@ export function ResultSummary({
                 </div>
               </div>
             </div>
-            <Badge
-              variant={
-                stockEntry.stockStatus === "In Stock"
-                  ? "success"
-                  : stockEntry.stockStatus === "Low Stock"
-                    ? "warning"
-                    : "destructive"
-              }
-              className="self-start sm:self-auto shrink-0 text-xs"
-            >
-              {stockEntry.stockStatus}
-            </Badge>
+            <StockStatusIndicator status={stockEntry.stockStatus} className="self-start sm:self-auto shrink-0" />
           </div>
         ) : null}
 

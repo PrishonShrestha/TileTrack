@@ -1,11 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { NumericInput } from "@/components/ui/numeric-input";
 import { LENGTH_UNIT_LABELS } from "@/lib/constants-labels";
+import { areaUnitFor, areaUnitLabel } from "@/features/calculator/lib/unitConversion";
 import { Button } from "@/components/ui/button";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Trash2, Plus, DoorClosed } from "lucide-react";
 import {
   removeWall,
@@ -28,9 +31,16 @@ export function WallInputRow({ section, unit }: WallInputRowProps) {
     section === "wall" ? s.calculator.wall.walls : s.calculator.bathroom.walls,
   );
 
+  const [wallModes, setWallModes] = useState<Record<string, "dimensions" | "area">>({});
+  const areaLabel = areaUnitLabel(areaUnitFor(unit));
+
   return (
     <div className="space-y-4">
-      {walls.map((wall, index) => (
+      {walls.map((wall, index) => {
+        const mode = wallModes[wall.id] ?? "dimensions";
+        const wallArea = Number((wall.length * wall.height).toFixed(2));
+
+        return (
         <Card
           key={wall.id}
           className="border border-border/80 bg-muted/15 shadow-2xs"
@@ -40,9 +50,6 @@ export function WallInputRow({ section, unit }: WallInputRowProps) {
               <span className="grid h-6 w-6 place-items-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
                 {index + 1}
               </span>
-              {/* <Label className="sr-only" htmlFor={`wall-label-${wall.id}`}>
-                Wall label
-              </Label> */}
               <input
                 id={`wall-label-${wall.id}`}
                 value={wall.label}
@@ -74,50 +81,100 @@ export function WallInputRow({ section, unit }: WallInputRowProps) {
             ) : null}
           </CardHeader>
           <CardContent className="space-y-4 pt-0">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
+            {section === "wall" && (
+              <div className="flex items-center justify-between pb-1 border-b border-border/60">
+                <span className="text-xs font-medium text-muted-foreground">Input method:</span>
+                <ToggleGroup
+                  type="single"
+                  value={mode}
+                  onValueChange={(val) => {
+                    if (val === "dimensions" || val === "area") {
+                      setWallModes((prev) => ({ ...prev, [wall.id]: val }));
+                    }
+                  }}
+                  className="bg-muted/40 p-0.5 rounded-lg"
+                >
+                  <ToggleGroupItem value="dimensions" className="text-xs px-2.5 py-1 h-7">
+                    Length × Height
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="area" className="text-xs px-2.5 py-1 h-7">
+                    Direct Area ({areaLabel})
+                  </ToggleGroupItem>
+                </ToggleGroup>
+              </div>
+            )}
+
+            {mode === "dimensions" || section !== "wall" ? (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-muted-foreground">
+                    Wall length / width
+                  </Label>
+                  <NumericInput
+                    value={wall.length}
+                    onValueChange={(val) =>
+                      dispatch(
+                        updateWall({
+                          section,
+                          id: wall.id,
+                          patch: { length: val ?? 0 },
+                        }),
+                      )
+                    }
+                    suffix={LENGTH_UNIT_LABELS[unit]}
+                    min={0}
+                    allowDecimal={true}
+                    placeholder="e.g. 10.5"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-muted-foreground">
+                    Wall height
+                  </Label>
+                  <NumericInput
+                    value={wall.height}
+                    onValueChange={(val) =>
+                      dispatch(
+                        updateWall({
+                          section,
+                          id: wall.id,
+                          patch: { height: val ?? 0 },
+                        }),
+                      )
+                    }
+                    suffix={LENGTH_UNIT_LABELS[unit]}
+                    min={0}
+                    allowDecimal={true}
+                    placeholder="e.g. 8.0"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-1.5 max-w-sm">
                 <Label className="text-xs font-medium text-muted-foreground">
-                  Wall length / width
+                  Wall direct area
                 </Label>
                 <NumericInput
-                  value={wall.length}
+                  value={wallArea > 0 ? wallArea : undefined}
                   onValueChange={(val) =>
                     dispatch(
                       updateWall({
                         section,
                         id: wall.id,
-                        patch: { length: val ?? 0 },
+                        patch: { length: val ?? 0, height: 1 },
                       }),
                     )
                   }
-                  suffix={LENGTH_UNIT_LABELS[unit]}
+                  suffix={areaLabel}
                   min={0}
                   allowDecimal={true}
-                  placeholder="e.g. 10.5"
+                  placeholder="e.g. 144"
                 />
+                <p className="text-[11px] text-muted-foreground">
+                  Direct surface area for this wall (openings can still be deducted below).
+                </p>
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-muted-foreground">
-                  Wall height
-                </Label>
-                <NumericInput
-                  value={wall.height}
-                  onValueChange={(val) =>
-                    dispatch(
-                      updateWall({
-                        section,
-                        id: wall.id,
-                        patch: { height: val ?? 0 },
-                      }),
-                    )
-                  }
-                  suffix={LENGTH_UNIT_LABELS[unit]}
-                  min={0}
-                  allowDecimal={true}
-                  placeholder="e.g. 8.0"
-                />
-              </div>
-            </div>
+            )}
 
             {/* Openings deduction section */}
             <div className="space-y-2 rounded-lg border border-border/60 bg-background/50 p-3">
@@ -227,7 +284,8 @@ export function WallInputRow({ section, unit }: WallInputRowProps) {
             </div>
           </CardContent>
         </Card>
-      ))}
+      );
+      })}
 
       <Button
         type="button"

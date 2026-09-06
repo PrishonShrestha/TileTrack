@@ -72,6 +72,76 @@ export interface ColorVariant {
   name: string;
 }
 
+export interface ItemCategory {
+  id: string;
+  name: string;
+}
+
+export type ItemUnit =
+  | "Piece"
+  | "Bag"
+  | "Tube"
+  | "Liter"
+  | "Roll"
+  | "Kg"
+  | "Box"
+  | "Set"
+  | "Meter"
+  | "Pair";
+
+export const ITEM_UNITS: ItemUnit[] = [
+  "Piece",
+  "Bag",
+  "Tube",
+  "Liter",
+  "Roll",
+  "Kg",
+  "Box",
+  "Set",
+  "Meter",
+  "Pair",
+];
+
+export interface Item {
+  itemId: string;
+  name: string;
+  category: string;
+  brand: string;
+  unit: ItemUnit | string;
+  pricePerUnit: number;
+  stockQty: number;
+  minStock: number;
+  stockStatus: StockStatus;
+  notes?: string;
+}
+
+export interface CreateItemPayload {
+  itemId: string;
+  name: string;
+  category: string;
+  brand: string;
+  unit: string;
+  pricePerUnit: number;
+  initialStockQty?: number;
+  minStock?: number;
+  notes?: string;
+}
+
+export interface UpdateItemPayload {
+  itemId: string;
+  name: string;
+  category: string;
+  brand: string;
+  unit: string;
+  pricePerUnit: number;
+  minStock?: number;
+  notes?: string;
+}
+
+export interface DeleteItemPayload {
+  itemId: string;
+}
+
 export interface WallInput {
   id: string;
   label: string;

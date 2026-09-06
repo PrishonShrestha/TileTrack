@@ -31,19 +31,38 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useGetStockHistoryQuery, useGetStockQuery } from "@/features/stock/store/stockApi";
 import { useGetProductsQuery } from "@/features/catalog/store/catalogApi";
+import { useGetItemsQuery } from "@/features/items/store/itemsApi";
 import { CURRENCY_SYMBOL } from "@/lib/constants";
 import { formatStockBoxesAndPieces } from "@/lib/utils";
+import { RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 
 type RangeDays = 7 | 30;
 
 export function ManageDashboardView() {
   const [rangeDays, setRangeDays] = useState<RangeDays>(7);
 
-  const { data: history = [], isLoading: historyLoading } = useGetStockHistoryQuery();
-  const { data: products = [], isLoading: productsLoading } = useGetProductsQuery();
-  const { data: stock = [], isLoading: stockLoading } = useGetStockQuery();
+  const { data: history = [], isLoading: historyLoading, refetch: refetchHistory, isFetching: historyFetching } = useGetStockHistoryQuery();
+  const { data: products = [], isLoading: productsLoading, refetch: refetchProducts, isFetching: productsFetching } = useGetProductsQuery();
+  const { data: stock = [], isLoading: stockLoading, refetch: refetchStock, isFetching: stockFetching } = useGetStockQuery();
+  const { data: items = [], isLoading: itemsLoading, refetch: refetchItems, isFetching: itemsFetching } = useGetItemsQuery();
 
-  const isLoading = historyLoading || productsLoading || stockLoading;
+  const isLoading = historyLoading || productsLoading || stockLoading || itemsLoading;
+  const isRefreshing = historyFetching || productsFetching || stockFetching || itemsFetching;
+
+  const handleRefresh = async () => {
+    try {
+      await Promise.all([
+        refetchHistory(),
+        refetchProducts(),
+        refetchStock(),
+        refetchItems(),
+      ]);
+      toast.success("Dashboard refreshed");
+    } catch {
+      toast.error("Failed to refresh dashboard");
+    }
+  };
 
   // Map products by ID for price and details lookup
   const productsMap = useMemo(() => {
@@ -54,6 +73,15 @@ export function ManageDashboardView() {
     });
     return map;
   }, [products]);
+
+  // Map items by ID
+  const itemsMap = useMemo(() => {
+    const map = new Map<string, (typeof items)[0]>();
+    items.forEach((i) => {
+      if (i.itemId) map.set(i.itemId.toLowerCase(), i);
+    });
+    return map;
+  }, [items]);
 
   // Aggregated KPIs
   const stats = useMemo(() => {
@@ -67,8 +95,10 @@ export function ManageDashboardView() {
 
     history.forEach((row) => {
       const rowDateStr = row.date.split("T")[0];
-      const prod = productsMap.get((row.productId || row.sku || "").toLowerCase());
-      const price = prod?.pricePerBox ?? 0;
+      const idKey = (row.productId || row.sku || "").toLowerCase();
+      const prod = productsMap.get(idKey);
+      const nonTile = itemsMap.get(idKey);
+      const price = prod?.pricePerBox ?? nonTile?.pricePerUnit ?? 0;
 
       if (row.action === "Sale") {
         salesTotalCount += 1;
@@ -94,7 +124,7 @@ export function ManageDashboardView() {
       totalStockBoxes: Number(totalStockBoxes.toFixed(2)),
       lowStockCount,
     };
-  }, [history, productsMap, stock]);
+  }, [history, productsMap, itemsMap, stock]);
 
   // Daily Chart Data for selected range (7d / 30d)
   const chartData = useMemo(() => {
@@ -167,6 +197,16 @@ export function ManageDashboardView() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="gap-1.5"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
+            <span>Refresh</span>
+          </Button>
           <Button asChild size="sm" variant="outline" className="gap-1.5">
             <Link href="/manage/sales">
               <ShoppingCart className="h-4 w-4" /> Sales Report

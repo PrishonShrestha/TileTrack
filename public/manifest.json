@@ -1,6 +1,6 @@
 {
-  "name": "TileCalc Pro - Tile & Marble Calculator",
-  "short_name": "TileCalc Pro",
+  "name": "TileTrack - Tile & Inventory Management",
+  "short_name": "TileTrack",
   "description": "Tile and marble quantity calculator with a live product catalog synced from Google Sheets.",
   "start_url": "/",
   "display": "standalone",
@@ -38,9 +38,9 @@
       "purpose": "maskable"
     },
     {
-      "src": "/icons/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml"
+      "src": "/icons/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
     }
   ],
   "shortcuts": [
@@ -96,7 +96,7 @@
       "name": "Product Catalog",
       "short_name": "Catalog",
       "description": "Browse tile and marble catalog",
-      "url": "/catalog",
+      "url": "/manage/catalog",
       "icons": [
         {
           "src": "/icons/icon-192x192.png",
@@ -108,7 +108,7 @@
       "name": "Stock Management",
       "short_name": "Stock",
       "description": "Track inventory and box stocks",
-      "url": "/stock",
+      "url": "/manage/stock",
       "icons": [
         {
           "src": "/icons/icon-192x192.png",
